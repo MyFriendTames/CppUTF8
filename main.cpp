@@ -5,44 +5,44 @@
 #include <bitset>
 
 uint32_t UTF8ToUnicode( const uint8_t*& chr ){
-    static uint8_t continuation = 0b10000000;
+    static uint8_t continuation = 0b00111111;
     static uint8_t singleByte = 0b00000000;
     static uint8_t twoBytes = 0b11000000;
     static uint8_t threeBytes = 0b11100000;
     static uint8_t fourBytes = 0b11110000;
     static uint32_t replacement = 0xFFFD;
     uint32_t code = replacement;
-    if ( *chr < twoBytes ){
+    if ( *chr < 0b11000000 ){ // ----------------- Single Byte
         code = *( chr++ );
-    }else if ( *chr < threeBytes ){
-        code = *( chr++ ) ^ twoBytes;
+    }else if ( *chr < 0b11100000 ){ // ----------- Two Bytes
+        code = *( chr++ ) & 0b00011111;
         if ( *chr && *chr >> 6 == 2 ){
             code <<= 6;
-            code |= *( chr++ ) ^ continuation;
+            code |= *( chr++ ) & continuation;
         }else return replacement;
-    }else if ( *chr < fourBytes ){
-        code = *( chr++ ) ^ threeBytes;
+    }else if ( *chr < 0b11110000 ){ // ----------- Three Bytes
+        code = *( chr++ ) & 0b00001111;
         if ( *chr && *chr >> 6 == 2 ){
             code <<= 6;
-            code |= *( chr++ ) ^ continuation;
-        }else return replacement;
-        if ( *chr && *chr >> 6 == 2 ){
-            code <<= 6;
-            code |= *( chr++ ) ^ continuation;
-        }else return replacement;
-    }else if ( *chr <= fourBytes | 0b111 ){
-        code = *( chr++ ) ^ fourBytes;
-        if ( *chr && *chr >> 6 == 2 ){
-            code <<= 6;
-            code |= *( chr++ ) ^ continuation;
+            code |= *( chr++ ) & continuation;
         }else return replacement;
         if ( *chr && *chr >> 6 == 2 ){
             code <<= 6;
-            code |= *( chr++ ) ^ continuation;
+            code |= *( chr++ ) & continuation;
+        }else return replacement;
+    }else if ( *chr <= 0b11110111 ){ // ---------- Four Bytes
+        code = *( chr++ ) & 0b00000111;
+        if ( *chr && *chr >> 6 == 2 ){
+            code <<= 6;
+            code |= *( chr++ ) & continuation;
         }else return replacement;
         if ( *chr && *chr >> 6 == 2 ){
             code <<= 6;
-            code |= *( chr++ ) ^ continuation;
+            code |= *( chr++ ) & continuation;
+        }else return replacement;
+        if ( *chr && *chr >> 6 == 2 ){
+            code <<= 6;
+            code |= *( chr++ ) & continuation;
         }else return replacement;
     }
     return code;
@@ -99,7 +99,7 @@ int main(){
     
     std::cout << ( uint32_t )0x10FFFF << " - " << std::bitset< 32 >( 0x10FFFF ) << std::endl;
     
-    const char* txt = "abcÁÉÍÓÚáéíóú€";
+    const char* txt = "abcÁÉÍÓÚáéíóú€öô";
     const uint8_t* chr = reinterpret_cast< const uint8_t* >( txt );
     
     std::cout << "Input: " << txt << std::endl;
